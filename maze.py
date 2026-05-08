@@ -1,33 +1,53 @@
 import pygame
 import random
-import time
+
 
 class Maze:
     def __init__(self, rows, cols, cell_size):
+
         self.rows = rows
         self.cols = cols
         self.cell_size = cell_size
 
-        # walls
+        # ==================================================
+        # REQUIRED STRUCTURE
+        # ==================================================
         self.northWall = [[True for _ in range(cols)] for _ in range(rows)]
         self.eastWall = [[True for _ in range(cols)] for _ in range(rows)]
 
-        # generation
+        # Left boundary (as described in assignment)
+        self.leftWall = [[True for _ in range(cols)] for _ in range(rows)]
+
+        # ==================================================
+        # GENERATION (DFS “mouse eating walls”)
+        # ==================================================
         self.visited_gen = [[False for _ in range(cols)] for _ in range(rows)]
-        self.stack = [(0, 0)]
+        self.stack = []
+
+        self.current = (0, 0)
         self.visited_gen[0][0] = True
 
-        # solver
+        # Start & End (on edges)
+        self.start_row = random.randint(0, rows - 1)
+        self.end_row = random.randint(0, rows - 1)
+
+        self.leftWall[self.start_row][0] = False
+        self.eastWall[self.end_row][cols - 1] = False
+
+        # ==================================================
+        # SOLVER (backtracking mouse)
+        # ==================================================
         self.visited_solve = [[False for _ in range(cols)] for _ in range(rows)]
-        self.dead = [[False for _ in range(cols)] for _ in range(rows)]
         self.path_stack = []
+        self.dead = [[False for _ in range(cols)] for _ in range(rows)]
+        self.finished = False
 
-    # ---------------- GENERATION ----------------
+    # ======================================================
+    # MAZE GENERATION (DFS STACK BACKTRACKING)
+    # ======================================================
     def step_generation(self):
-        if not self.stack:
-            return True
 
-        r, c = self.stack[-1]
+        r, c = self.current
 
         neighbors = []
 
@@ -43,7 +63,7 @@ class Maze:
         if neighbors:
             nr, nc = random.choice(neighbors)
 
-            # remove walls
+            # remove wall between cells
             if nr == r - 1:
                 self.northWall[r][c] = False
             elif nr == r + 1:
@@ -53,104 +73,110 @@ class Maze:
             elif nc == c + 1:
                 self.eastWall[r][c] = False
 
+            # DFS behavior
+            self.stack.append(self.current)
             self.visited_gen[nr][nc] = True
-            self.stack.append((nr, nc))
-        else:
-            self.stack.pop()
+            self.current = (nr, nc)
 
-        time.sleep(0.03)  #  slower generation
+        else:
+            if self.stack:
+                self.current = self.stack.pop()
+            else:
+                return True
 
         return False
 
-    # ---------------- SOLVER ----------------
+    # ======================================================
+    # SOLVER (BACKTRACKING MOUSE)
+    # ======================================================
     def prepare_solver(self):
-        self.path_stack = [(0, 0)]
-        self.visited_solve[0][0] = True
+        self.path_stack = [(self.start_row, 0)]
+        self.visited_solve[self.start_row][0] = True
 
     def step_solver(self):
-        if not self.path_stack:
+
+        if self.finished or not self.path_stack:
             return
 
         r, c = self.path_stack[-1]
 
-        if (r, c) == (self.rows - 1, self.cols - 1):
+        if r == self.end_row and c == self.cols - 1:
+            self.finished = True
             return
 
-        moved = False
+        neighbors = []
 
         if c < self.cols - 1 and not self.eastWall[r][c] and not self.visited_solve[r][c + 1]:
-            self.path_stack.append((r, c + 1))
-            self.visited_solve[r][c + 1] = True
-            moved = True
+            neighbors.append((r, c + 1))
 
-        elif r < self.rows - 1 and not self.northWall[r + 1][c] and not self.visited_solve[r + 1][c]:
-            self.path_stack.append((r + 1, c))
-            self.visited_solve[r + 1][c] = True
-            moved = True
+        if r < self.rows - 1 and not self.northWall[r + 1][c] and not self.visited_solve[r + 1][c]:
+            neighbors.append((r + 1, c))
 
-        elif c > 0 and not self.eastWall[r][c - 1] and not self.visited_solve[r][c - 1]:
-            self.path_stack.append((r, c - 1))
-            self.visited_solve[r][c - 1] = True
-            moved = True
+        if c > 0 and not self.eastWall[r][c - 1] and not self.visited_solve[r][c - 1]:
+            neighbors.append((r, c - 1))
 
-        elif r > 0 and not self.northWall[r][c] and not self.visited_solve[r - 1][c]:
-            self.path_stack.append((r - 1, c))
-            self.visited_solve[r - 1][c] = True
-            moved = True
+        if r > 0 and not self.northWall[r][c] and not self.visited_solve[r - 1][c]:
+            neighbors.append((r - 1, c))
 
-        if not moved:
-            r2, c2 = self.path_stack.pop()
-            self.dead[r2][c2] = True
+        if neighbors:
+            nr, nc = random.choice(neighbors)
+            self.path_stack.append((nr, nc))
+            self.visited_solve[nr][nc] = True
 
-        time.sleep(0.03)  # slower solver movement
+        else:
+            dr, dc = self.path_stack.pop()
+            self.dead[dr][dc] = True
 
-    # ---------------- DRAW ----------------
+    # ======================================================
+    # DRAW
+    # ======================================================
     def draw(self, screen):
+
         for r in range(self.rows):
             for c in range(self.cols):
+
                 x = c * self.cell_size
                 y = r * self.cell_size
 
-                # solver red dot
-                if self.path_stack and (r, c) == self.path_stack[-1]:
-                    pygame.draw.circle(
-                        screen,
-                        (255, 0, 0),
-                        (x + self.cell_size // 2, y + self.cell_size // 2),
-                        self.cell_size // 4,
-                    )
-
-                # generation green dot
-                if self.stack and (r, c) == self.stack[-1]:
-                    pygame.draw.circle(
-                        screen,
-                        (0, 200, 0),
-                        (x + self.cell_size // 2, y + self.cell_size // 2),
-                        self.cell_size // 4,
-                    )
-
-                # dead ends
+                # DEAD END (blue)
                 if self.dead[r][c]:
-                    pygame.draw.rect(
-                        screen,
-                        (0, 0, 255),
-                        (x, y, self.cell_size, self.cell_size)
-                    )
+                    pygame.draw.rect(screen, (0, 0, 255),
+                                     (x, y, self.cell_size, self.cell_size))
 
-                # north wall
+                # SOLVER POSITION (red)
+                if self.path_stack and (r, c) == self.path_stack[-1]:
+                    pygame.draw.circle(screen, (255, 0, 0),
+                                       (x + self.cell_size // 2,
+                                        y + self.cell_size // 2),
+                                       self.cell_size // 4)
+
+                # GENERATION POSITION (green)
+                if (r, c) == self.current:
+                    pygame.draw.circle(screen, (0, 200, 0),
+                                       (x + self.cell_size // 2,
+                                        y + self.cell_size // 2),
+                                       self.cell_size // 4)
+
+                # NORTH WALL
                 if self.northWall[r][c]:
-                    pygame.draw.line(screen, (0, 0, 0), (x, y), (x + self.cell_size, y), 2)
+                    pygame.draw.line(screen, (0, 0, 0),
+                                     (x, y),
+                                     (x + self.cell_size, y), 2)
 
-                # east wall
+                # EAST WALL
                 if self.eastWall[r][c]:
                     pygame.draw.line(screen, (0, 0, 0),
                                      (x + self.cell_size, y),
                                      (x + self.cell_size, y + self.cell_size), 2)
 
-        # border
-        pygame.draw.rect(
-            screen,
-            (0, 0, 0),
-            (0, 0, self.cols * self.cell_size, self.rows * self.cell_size),
-            2
-        )
+                # LEFT BORDER
+                if c == 0 and self.leftWall[r][c]:
+                    pygame.draw.line(screen, (0, 0, 0),
+                                     (x, y),
+                                     (x, y + self.cell_size), 2)
+
+        # bottom border
+        pygame.draw.line(screen, (0, 0, 0),
+                         (0, self.rows * self.cell_size),
+                         (self.cols * self.cell_size,
+                          self.rows * self.cell_size), 2)
