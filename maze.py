@@ -58,7 +58,7 @@ class Maze:
         else:
             self.stack.pop()
 
-        time.sleep(0.03)  # 🟢 slower generation
+        time.sleep(0.03)  #  slower generation
 
         return False
 
@@ -102,7 +102,7 @@ class Maze:
             r2, c2 = self.path_stack.pop()
             self.dead[r2][c2] = True
 
-        time.sleep(0.03)  # 🟠 slower solver movement
+        time.sleep(0.03)  # slower solver movement
 
     # ---------------- DRAW ----------------
     def draw(self, screen):

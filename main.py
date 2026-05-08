@@ -20,7 +20,7 @@ generating = True
 solving = False
 
 while running:
-    clock.tick(30)  # 🟡 slower frame rate (important)
+    clock.tick(30)  #  slower frame rate 
 
     screen.fill(WHITE)
 
