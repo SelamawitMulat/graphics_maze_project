@@ -1,6 +1,4 @@
-Here’s your content turned into a clean, GitHub-style `README.md` with badges + your added section (I didn’t change your original explanation, just improved presentation and structure).
 
-```markdown
 # 🧩 Maze Generator & Solver (Pygame)
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue?logo=python)
